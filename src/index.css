@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* GoalVault — dark vault theme only. Deep pine green surfaces, gold rules,
+   cream text. Tabular mono numbers so stakes and countdowns read like a
+   vault ledger. */
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: #061a13;
+}
+
+body {
+  font-family: "Outfit", system-ui, sans-serif;
+  color: #f2ecd9;
+  background:
+    radial-gradient(1100px 480px at 50% -120px, rgba(23, 87, 62, 0.55), transparent 70%),
+    radial-gradient(700px 380px at 85% 0%, rgba(201, 162, 39, 0.10), transparent 65%),
+    #061a13;
+  min-height: 100vh;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Thin gold-tinted scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(201, 162, 39, 0.3);
+  border-radius: 8px;
+  border: 2px solid #061a13;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(80%) sepia(35%) saturate(600%) hue-rotate(5deg);
+  cursor: pointer;
+}
