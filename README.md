@@ -2,7 +2,7 @@
 
 **Stake GEN on your own public goal. Hit it, and you split the stakes of everyone in your epoch who didn't.**
 
-GoalVault is a commitment staking pool built on a GenLayer Intelligent Contract (Bradbury testnet, chain 4221). You lock GEN behind a goal you set for yourself, publish proof on a public page when you're done, and a GenLayer validator jury reads that page and decides — against the criteria you wrote when you staked — whether you achieved it. Achievers get their own stake back plus an equal share of the failed stakes in the same epoch. No achievers, no payout: the pool rolls forward.
+GoalVault is a commitment staking pool built on a GenLayer Intelligent Contract (Bradbury testnet, chain 4221). You lock GEN behind a goal you set for yourself, publish proof on a public page when you're done, and a GenLayer validator jury reads that page and decides — against the criteria you wrote when you staked — whether you achieved it. Achievers get their own stake back plus a **stake-weighted share** of the failed stakes in the same epoch: a bigger stake earns a bigger share of the pool. No achievers, no payout: the pool rolls forward.
 
 ## Live app
 
@@ -21,9 +21,23 @@ Time is divided into **epochs** (30 days on production). Inside an epoch:
 
 1. **Create a goal** — `create_goal(title, criteria, deadline_ts)` with at least the minimum stake (0.001 GEN on production). The deadline must sit inside the current epoch, at least the minimum lead time ahead. The contract issues your goal a public proof token (`GV-<goal>-<staker prefix>`).
 2. **Publish your proof** — put the proof token on a public web page that shows you met your own criteria, then call `submit_proof(goal_id, proof_url)`. The contract hashes the page content at submission time, so the proof the jury later reads is the proof you filed.
-3. **Jury assessment** — anyone can call `assess(goal_id)`. The jury fetches your proof page, checks the token and the evidence against your stated criteria, and records a verdict on-chain: `ACHIEVED` with a reason code, or a not-achieved verdict with its own code.
+3. **Jury assessment** — anyone can call `assess(goal_id)`. The jury fetches your proof page, checks the token and the evidence against your stated criteria, and records a verdict on-chain: `ACHIEVED` with a reason code, or a not-achieved verdict with its own code. The jury is given the goal's stored creation time and deadline, and the achievement must be shown to have happened between them: proof of work done before the goal was created, a finish after the deadline, or a page with no date at all cannot be judged achieved (`TIMING_NOT_ESTABLISHED`).
 4. **Epoch finalization** — after the epoch ends and its assessment window closes, the epoch freezes: the failed stakes form the epoch's bonus pool.
-5. **Credit & withdraw** — `credit(goal_id)` pays an achiever their stake back plus their share of the frozen failed pool; if the pool can't be divided exactly, the leftover dust can be rolled into the open epoch with `roll_dust(epoch)`. Credited balances are withdrawn with `withdraw()`. A goal nobody assesses in time has a hard exit too: after the assessment window it can be marked failed, so stakes are never stuck.
+5. **Credit & withdraw** — `credit(goal_id)` pays an achiever their stake back plus their stake-weighted share of the frozen failed pool; if the pool can't be divided exactly, the leftover dust can be rolled into the open epoch with `roll_dust(epoch)`. Credited balances are withdrawn with `withdraw()`. A goal nobody assesses in time has a hard exit too: after the assessment window it can be marked failed, so stakes are never stuck.
+
+## Bonus math (worked example)
+
+An achiever's payout is `stake + (failed pool × stake / total achieved stake)`, integer division, computed once from the epoch's frozen totals. The bonus follows the stake — it is **not** split equally.
+
+Two goals achieve in one epoch, one fails:
+
+| Goal | Stake | Result | Payout |
+|---|---|---|---|
+| A | 0.01 GEN | Achieved | 0.01 + 0.03 × 0.01 / 0.04 = **0.0175 GEN** |
+| B | 0.03 GEN | Achieved | 0.03 + 0.03 × 0.03 / 0.04 = **0.0525 GEN** |
+| C | 0.03 GEN | Failed | 0 (feeds the pool) |
+
+Failed pool 0.03 GEN, achieved stake 0.04 GEN. A's bonus is 0.0075 GEN, B's is 0.0225 GEN — equal sharing would have paid each a 0.015 GEN bonus instead (0.025 / 0.045 GEN). In wei, the same example is stakes 10,000 / 30,000 against a 30,000 failed pool, paying **17,500** and **52,500**. The exact wei-level proof is in `tests_offline.py` (`gv33_two_achievers_stake_weighted`); the timing rule is proven there too (`gv32_timing_negatives`: prior work, late completion and undated proof can never receive `ACHIEVED`).
 
 ## Features
 
